@@ -50,6 +50,39 @@ https://github.com/Serhii-Nesteruk/libvoicefeat
 
 ---
 
+## LVF Inspection Script
+
+This repository stores cached feature files in a custom binary format (`.lvf`) produced by `sv::io::FeatureSerdes`.
+To quickly verify that the serialization format is correct (header, options, MFCC matrix and VAD flags), use the
+inspection script:
+
+```bash
+python3 scripts/inspect_lvf/inspect_lvf.py path/to/file.lvf
+```
+
+The script prints:
+
+file magic and format version
+
+CepstralType
+
+FeatureOptions (sample rate, number of filters/coeffs, frequency range, etc.)
+
+MFCC matrix shape (rows × cols) and a preview of values
+
+VAD flags length and basic statistics (speech vs non-speech)
+
+To print the full MFCC matrix without truncation:
+```bash
+python3 scripts/inspect_lvf/inspect_lvf.py path/to/file.lvf --full-matrix
+```
+
+To control how many rows and columns should be print use:
+```bash
+python3 scripts/inspect_lvf/inspect_lvf.py path/to/file.lvf --rows [ROWS] --cols [COLS]
+```
+---
+
 ## Intended Use
 
 This project is designed as:
