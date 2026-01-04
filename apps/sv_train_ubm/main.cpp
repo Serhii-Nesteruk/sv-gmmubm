@@ -1,20 +1,15 @@
-#include "sv/io/feature_serdes.h"
-
-#include <iostream>
-#include <filesystem>
-#include <vector>
 #include <algorithm>
+#include <iostream>
 
-#include <libvoicefeat/libvoicefeat.h>
+#include "sv/gmm/gmm_ubm_trainer.h"
+#include "sv/gmm/gmm_model_serdes.h"
 
-using namespace libvoicefeat;
-using namespace libvoicefeat::features;
-
-namespace fs = std::filesystem;
+#include <cmath>
+#include <limits>
 
 using ListOfPaths = std::vector<fs::path>;
 
-ListOfPaths getAllWavFilesFromDir(const fs::path& rootDir)
+ListOfPaths getAllLvfFilesFromDir(const fs::path& rootDir) // TODO: DRY
 {
     if (!fs::exists(rootDir) || !fs::is_directory(rootDir)) {
         throw std::runtime_error("Invalid directory: " + rootDir.string());
@@ -27,7 +22,7 @@ ListOfPaths getAllWavFilesFromDir(const fs::path& rootDir)
         if (!entry.is_regular_file()) continue;
 
         const fs::path& p = entry.path();
-        if (p.extension() == ".wav") {
+        if (p.extension() == ".lvf") {
             paths.push_back(p);
         }
     }
@@ -36,63 +31,25 @@ ListOfPaths getAllWavFilesFromDir(const fs::path& rootDir)
     return paths;
 }
 
-fs::path makeFeaturePath(const fs::path& wavPath,
-                         const fs::path& timitRoot,
-                         const fs::path& featuresRoot)
-{
-    fs::path rel = fs::relative(wavPath, timitRoot); // e.g. TRAIN/DR1/FAKS0/SX403.WAV
-    fs::path out = featuresRoot / rel;               // data/features/...
-    out.replace_extension(".lvf");
-    return out;
-}
-
 int main()
 {
-    try
-    {
-        fs::path timitRoot    = "../../../data/timit";
-        fs::path trainRoot    = timitRoot / "TRAIN";
-        fs::path featuresRoot = "../../../data/features";
+     fs::path featuresRoot    = "../../../data/features";
+     fs::path trainRoot    = featuresRoot / "TRAIN";
+     const auto lvfFiles = getAllLvfFilesFromDir(trainRoot);
 
-        ListOfPaths wavFiles = getAllWavFilesFromDir(trainRoot);
-        CepstralConfig config;
-        config.type = CepstralType::MFCC;
-        config.delta.useDeltas = true;
-        config.delta.useDeltaDeltas = true;
+     sv::io::FeatureSerdes featSerdes;
 
-        CepstralExtractor extractor(config);
+     sv::gmm::GmmUbmTrainer::Options options;
+     options.numGaussians = 128;
+     options.maxIterations = 15;
+     options.verbose = true;
 
-        sv::io::FeatureSerdes serdes;
+     sv::gmm::GmmUbmTrainer trainer(options);
 
-        size_t loaded = 0;
-        size_t computed = 0;
+     auto ubm = trainer.trainFromLfv(lvfFiles, featSerdes);
 
-        for (const auto& wavPath : wavFiles)
-        {
-            fs::path featPath = makeFeaturePath(wavPath, timitRoot, featuresRoot);
-
-            Feature feat;
-
-            if (fs::exists(featPath))
-            {
-                feat = serdes.load(featPath);
-                ++loaded;
-            }
-            else
-            {
-                feat = extractor.extractFromFile(wavPath);
-                serdes.save(featPath, feat);
-                ++computed;
-            }
-        }
-
-        std::cout << "Done. Loaded: " << loaded << ", computed+saved: " << computed << "\n";
-    }
-    catch (const std::exception& e)
-    {
-        std::cerr << "Failed: " << e.what() << std::endl;
-        return 1;
-    }
+     sv::gmm::GmmModelSerdes modelSerdes;
+     modelSerdes.save("../../../data/models/ubm.bin", ubm);
 
     return 0;
 }

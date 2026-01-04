@@ -19,7 +19,7 @@
             FeatureSerdes() = default;
 
             void save(const fs::path& file, const libvoicefeat::features::Feature& feat) const;
-            libvoicefeat::features::Feature load(const fs::path& file) const;
+            [[nodiscard]] libvoicefeat::features::Feature load(const fs::path& file) const;
 
         private:
             static constexpr uint32_t kVersion = 1;

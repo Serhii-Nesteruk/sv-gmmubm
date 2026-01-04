@@ -1,5 +1,10 @@
 add_library(libsv STATIC
         src/io/feature_serdes.cpp
+        src/gmm/gmm_ubm_trainer.cpp
+        src/gmm/gmm_model_serdes.cpp
+        src/gmm/bw_stats_accumulator.cpp
+        src/gmm/map_adaptor.cpp
+        src/gmm/scorer.cpp
 )
 
 target_include_directories(libsv
